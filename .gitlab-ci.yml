@@ -1,0 +1,54 @@
+image: vault.anar.biz:5050/anar-app/api/ruby-node-pg:2.6.2.7
+
+.setup: &setup
+    before_script:
+        - git config user.name "Gitlab Baba"
+        - apt-get install rsync -yqq
+
+        - mkdir -p ~/.ssh
+        - ssh-keyscan -t rsa vault.anar.biz >> ~/.ssh/known_hosts # 2>/dev/null
+        - ssh-keyscan -t rsa 172.31.11.62   >> ~/.ssh/known_hosts # 2>/dev/null
+
+        - echo "$SSH_KEY" >  ~/.ssh/id_rsa
+        - echo "$SSH_KEY_PUB" >  ~/.ssh/id_rsa.pub
+        - chmod 0600 ~/.ssh/*
+
+        - npm install
+
+# Cache modules in between jobs
+cache:
+    key: "$CI_BUILD_REF_NAME"
+    paths:
+        - node_modules/
+
+stages:
+    - test
+    - deploy
+
+lint:
+    <<: *setup
+    stage: test
+    tags:
+        - lint
+    script:
+        - npm run lint
+
+staging:
+    <<: *setup
+    stage: test
+    tags:
+        - deploy
+    script:
+        - npx run build
+        # - npx shipit staging deploy
+
+# production:
+#     <<: *setup
+#     stage: deploy
+#     only:
+#         - master
+#     when: manual
+#     tags:
+#         - deploy
+#     script:
+#         - npx shipit production deploy -b master
